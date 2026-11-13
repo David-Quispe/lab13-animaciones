@@ -99,6 +99,7 @@ fun CampoDeJuego(juego: JuegoEstado, modifier: Modifier = Modifier) {
                 }
             }
             JugadorView(juego, geometria)
+            CapaParticulas(juego)
         }
     }
 }

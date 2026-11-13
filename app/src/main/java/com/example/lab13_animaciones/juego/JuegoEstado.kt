@@ -7,7 +7,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.random.Random
 
 const val VIDAS_INICIALES = 3
@@ -26,6 +29,11 @@ private const val DURACION_IMAN = 6f
 private const val INTERVALO_BASE = 1.1f
 private const val CLAVE_MEJOR = "mejor_puntaje"
 
+private val COLORES_MONEDA = listOf(Color(0xFFFFC107), Color(0xFFFFE082), Color.White)
+private val COLORES_ESCUDO = listOf(Color(0xFF00E5FF), Color(0xFF81D4FA), Color.White)
+private val COLORES_IMAN = listOf(Color(0xFFAB47BC), Color(0xFFE1BEE7), Color.White)
+private val COLORES_GOLPE = listOf(Color(0xFFFF5252), Color(0xFFFF9800), Color(0xFFFFEB3B))
+
 enum class Pantalla { Inicio, Jugando, Pausa, GameOver }
 
 enum class TipoEntidad { ObstaculoAlto, ObstaculoBajo, Moneda, Escudo, Iman }
@@ -35,6 +43,21 @@ class Entidad(val id: Int, val tipo: TipoEntidad, val carril: Int, yInicial: Flo
     var y by mutableFloatStateOf(yInicial)
     var consumida by mutableStateOf(false)
     var tiempoConsumida = 0f
+}
+
+// Partícula visual (chispa, polvo...). x e y van de 0 a 1 dentro del campo.
+class Particula(
+    xInicial: Float,
+    yInicial: Float,
+    val vx: Float,
+    val vy: Float,
+    val vidaMax: Float,
+    val color: Color,
+    val radio: Float
+) {
+    var x by mutableFloatStateOf(xInicial)
+    var y by mutableFloatStateOf(yInicial)
+    var vida by mutableFloatStateOf(vidaMax)
 }
 
 class JuegoEstado(private val prefs: SharedPreferences) {
@@ -82,6 +105,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         private set
 
     val entidades = mutableStateListOf<Entidad>()
+    val particulas = mutableStateListOf<Particula>()
 
     private var velocidad = VELOCIDAD_INICIAL
     private var tiempoSalto = 0f
@@ -90,10 +114,12 @@ class JuegoEstado(private val prefs: SharedPreferences) {
     private var tiempoIman = 0f
     private var tiempoGenerar = 0f
     private var puntosMonedas = 0
+    private var tiempoPolvo = 0f
     private var siguienteId = 0
 
     fun iniciar() {
         entidades.clear()
+        particulas.clear()
         carril = 1
         saltando = false
         vidas = VIDAS_INICIALES
@@ -127,6 +153,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
 
     fun irAlMenu() {
         entidades.clear()
+        particulas.clear()
         carril = 1
         saltando = false
         invulnerable = false
@@ -152,6 +179,11 @@ class JuegoEstado(private val prefs: SharedPreferences) {
 
     // Se llama en cada frame desde el bucle del juego. dt viene en segundos.
     fun actualizar(dt: Float) {
+        if (pantalla == Pantalla.GameOver) {
+            // Las partículas de la explosión terminan de caer
+            actualizarParticulas(dt)
+            return
+        }
         if (pantalla != Pantalla.Jugando) return
 
         velocidad = (velocidad + ACELERACION * dt).coerceAtMost(VELOCIDAD_MAXIMA)
@@ -183,6 +215,23 @@ class JuegoEstado(private val prefs: SharedPreferences) {
             tiempoGenerar = (INTERVALO_BASE * VELOCIDAD_INICIAL / velocidad).coerceAtLeast(0.45f)
         }
 
+        // Polvo detrás de la alpaca mientras corre
+        tiempoPolvo -= dt
+        if (tiempoPolvo <= 0f && !saltando) {
+            tiempoPolvo = 0.05f
+            particulas.add(
+                Particula(
+                    xInicial = xDeCarril(carril) + (Random.nextFloat() - 0.5f) * 0.06f,
+                    yInicial = POS_JUGADOR + 0.07f,
+                    vx = (Random.nextFloat() - 0.5f) * 0.05f,
+                    vy = velocidad * 0.9f,
+                    vidaMax = 0.4f,
+                    color = Color(0xFFD7CCC8),
+                    radio = 3f + Random.nextFloat() * 3f
+                )
+            )
+        }
+
         val eliminar = mutableListOf<Entidad>()
         for (e in entidades) {
             e.y += velocidad * dt
@@ -205,18 +254,21 @@ class JuegoEstado(private val prefs: SharedPreferences) {
                     puntosMonedas += 10 * multiplicador
                     racha++
                     monedas++
+                    explosion(xDeCarril(e.carril), e.y, 8, COLORES_MONEDA, 0.3f)
                 }
                 TipoEntidad.Escudo -> if (mismoCarril) {
                     e.consumida = true
                     escudoActivo = true
                     tiempoEscudo = DURACION_ESCUDO
                     progresoEscudo = 1f
+                    explosion(xDeCarril(e.carril), e.y, 12, COLORES_ESCUDO, 0.35f)
                 }
                 TipoEntidad.Iman -> if (mismoCarril) {
                     e.consumida = true
                     imanActivo = true
                     tiempoIman = DURACION_IMAN
                     progresoIman = 1f
+                    explosion(xDeCarril(e.carril), e.y, 12, COLORES_IMAN, 0.35f)
                 }
                 TipoEntidad.ObstaculoAlto -> if (mismoCarril) golpear(e)
                 // El obstáculo bajo se puede saltar
@@ -224,6 +276,41 @@ class JuegoEstado(private val prefs: SharedPreferences) {
             }
         }
         entidades.removeAll(eliminar)
+        actualizarParticulas(dt)
+    }
+
+    private fun actualizarParticulas(dt: Float) {
+        val muertas = mutableListOf<Particula>()
+        for (p in particulas) {
+            p.x += p.vx * dt
+            p.y += p.vy * dt
+            p.vida -= dt
+            if (p.vida <= 0f) muertas.add(p)
+        }
+        particulas.removeAll(muertas)
+    }
+
+    // Posición horizontal (de 0 a 1) del centro de un carril
+    private fun xDeCarril(c: Int): Float =
+        (1f - FRACCION_CARRETERA) / 2f + FRACCION_CARRETERA * (c + 0.5f) / 3f
+
+    private fun explosion(x: Float, y: Float, cantidad: Int, colores: List<Color>, fuerza: Float) {
+        repeat(cantidad) {
+            val angulo = Random.nextFloat() * 6.2832f
+            val rapidez = fuerza * (0.4f + Random.nextFloat() * 0.6f)
+            particulas.add(
+                Particula(
+                    xInicial = x,
+                    yInicial = y,
+                    vx = cos(angulo) * rapidez,
+                    vy = sin(angulo) * rapidez,
+                    vidaMax = 0.35f + Random.nextFloat() * 0.3f,
+                    color = colores.random(),
+                    radio = 4f + Random.nextFloat() * 5f
+                )
+            )
+        }
+        while (particulas.size > 150) particulas.removeAt(0)
     }
 
     private fun golpear(e: Entidad) {
@@ -232,6 +319,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         invulnerable = true
         golpes++
         racha = 0
+        explosion(xDeCarril(carril), POS_JUGADOR, 18, COLORES_GOLPE, 0.5f)
         if (escudoActivo) {
             // El escudo absorbe un golpe
             escudoActivo = false

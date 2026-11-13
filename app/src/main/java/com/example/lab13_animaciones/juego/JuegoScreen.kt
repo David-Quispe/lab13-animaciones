@@ -49,7 +49,7 @@ fun Ejercicio5Screen(modifier: Modifier = Modifier) {
     // Bucle del juego: mientras la pantalla sea "Jugando" se actualiza en cada frame.
     // Al cambiar de pantalla el efecto se cancela solo, y por eso la pausa congela el juego.
     LaunchedEffect(juego.pantalla) {
-        if (juego.pantalla == Pantalla.Jugando) {
+        if (juego.pantalla == Pantalla.Jugando || juego.pantalla == Pantalla.GameOver) {
             var anterior = withFrameNanos { it }
             while (true) {
                 val ahora = withFrameNanos { it }
