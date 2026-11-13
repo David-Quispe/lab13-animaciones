@@ -2,6 +2,7 @@ package com.example.lab13_animaciones.juego
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
@@ -175,6 +176,16 @@ private fun JugadorView(juego: JuegoEstado, g: Geometria) {
         label = "parpadeo"
     )
 
+    // Ciclo de carrera de la alpaca (patas y rebote)
+    val fase = rememberInfiniteTransition(label = "carreraTransicion").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 420, easing = LinearEasing)
+        ),
+        label = "fase"
+    )
+
     val ySuelo = POS_JUGADOR * g.altoPx - g.tamanoPx / 2f
 
     // Sombra que se queda en el suelo mientras el jugador salta
@@ -197,12 +208,18 @@ private fun JugadorView(juego: JuegoEstado, g: Geometria) {
                 val s = 1f + 0.3f * altura
                 scaleX = s
                 scaleY = s
+                // Se inclina hacia el lado al que cambia de carril
+                rotationZ = ((x - g.xCarril(juego.carril)) / g.anchoCarrilPx) * -12f
                 alpha = if (juego.invulnerable) parpadeo else 1f
-            }
-            .background(color, CircleShape),
+            },
         contentAlignment = Alignment.Center
     ) {
-        Text(text = "😎", fontSize = 26.sp)
+        Alpaca(
+            fase = fase,
+            enSalto = juego.saltando,
+            colorManta = color,
+            modifier = Modifier.fillMaxSize()
+        )
 
         AnimatedVisibility(
             visible = juego.escudoActivo,
