@@ -241,6 +241,16 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         if (primeraVez) iniciar() else pantalla = Pantalla.Inicio
     }
 
+    // Borra todo lo guardado: monedas, personajes, logros, récord y tutorial
+    fun reiniciarProgreso() {
+        prefs.edit().clear().apply()
+        monedasTotales = 0
+        personajeActivo = "alpaca"
+        desbloqueados = setOf("alpaca")
+        logrosObtenidos = emptySet()
+        mejorPuntaje = 0
+    }
+
     fun abrirLogros() {
         if (pantalla == Pantalla.Inicio) pantalla = Pantalla.Logros
     }

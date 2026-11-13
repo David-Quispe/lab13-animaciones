@@ -28,7 +28,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -236,6 +239,20 @@ private fun PanelInicio(juego: JuegoEstado) {
         }
         Button(onClick = { juego.alternarSonido() }) {
             Text(if (juego.sonidoActivo) "Sonido: sí" else "Sonido: no")
+        }
+        // Pide confirmar con un segundo toque para no borrar el progreso sin querer
+        var confirmar by remember { mutableStateOf(false) }
+        Button(
+            onClick = {
+                if (confirmar) {
+                    juego.reiniciarProgreso()
+                    confirmar = false
+                } else {
+                    confirmar = true
+                }
+            }
+        ) {
+            Text(if (confirmar) "¿Seguro? Toca otra vez para borrar todo" else "Reiniciar progreso")
         }
     }
 }
