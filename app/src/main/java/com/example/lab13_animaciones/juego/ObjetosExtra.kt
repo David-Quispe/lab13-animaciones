@@ -96,3 +96,39 @@ fun RocotoView(modifier: Modifier = Modifier) {
         drawOval(Color(0xFF66BB6A), Offset(w * 0.52f, h * 0.06f), Size(w * 0.25f, h * 0.12f))
     }
 }
+
+// Reloj: cámara lenta
+@Composable
+fun RelojView(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val r = size.minDimension / 2f
+        drawCircle(Color(0xFF29B6F6).copy(alpha = 0.3f), r, center)
+        drawCircle(Color.White, r * 0.78f, center)
+        drawCircle(Color(0xFF0277BD), r * 0.78f, center, style = Stroke(width = r * 0.12f))
+        drawLine(Color(0xFF263238), center, Offset(center.x, center.y - r * 0.5f), strokeWidth = r * 0.1f)
+        drawLine(Color(0xFF263238), center, Offset(center.x + r * 0.35f, center.y), strokeWidth = r * 0.1f)
+        drawCircle(Color(0xFF263238), r * 0.08f, center)
+    }
+}
+
+// Estrella: doble puntos
+@Composable
+fun DobleView(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val r = size.minDimension / 2f
+        drawCircle(Color(0xFFFFC107).copy(alpha = 0.3f), r, center)
+        val estrella = Path()
+        for (i in 0 until 10) {
+            val ang = -1.5708f + i * 0.62832f
+            val rad = if (i % 2 == 0) r * 0.85f else r * 0.4f
+            val x = center.x + cos(ang) * rad
+            val y = center.y + sin(ang) * rad
+            if (i == 0) estrella.moveTo(x, y) else estrella.lineTo(x, y)
+        }
+        estrella.close()
+        drawPath(estrella, Color(0xFFFFC107))
+        drawPath(estrella, Color(0xFFFF8F00), style = Stroke(width = r * 0.08f))
+        drawCircle(Color(0xFFFF8F00), r * 0.14f, Offset(center.x - r * 0.15f, center.y))
+        drawCircle(Color(0xFFFF8F00), r * 0.14f, Offset(center.x + r * 0.2f, center.y))
+    }
+}

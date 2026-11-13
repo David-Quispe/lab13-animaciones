@@ -321,5 +321,10 @@ fun FondoParallax(juego: JuegoEstado, modifier: Modifier = Modifier) {
 
         // Tinte general según la hora del día
         drawRect(color = tinte, size = Size(ancho, alto))
+
+        // En cámara lenta todo se ve con un velo azulado
+        if (juego.lentoActivo) {
+            drawRect(color = Color(0xFF29B6F6).copy(alpha = 0.16f), size = Size(ancho, alto))
+        }
     }
 }

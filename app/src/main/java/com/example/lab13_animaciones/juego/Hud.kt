@@ -73,7 +73,7 @@ fun Hud(juego: JuegoEstado, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             BarraPoder(
                 visible = juego.escudoActivo,
@@ -87,6 +87,20 @@ fun Hud(juego: JuegoEstado, modifier: Modifier = Modifier) {
                 etiqueta = "Imán",
                 color = Color(0xFFAB47BC),
                 progreso = { juego.progresoIman },
+                modifier = Modifier.weight(1f)
+            )
+            BarraPoder(
+                visible = juego.lentoActivo,
+                etiqueta = "Lento",
+                color = Color(0xFF29B6F6),
+                progreso = { juego.progresoLento },
+                modifier = Modifier.weight(1f)
+            )
+            BarraPoder(
+                visible = juego.dobleActivo,
+                etiqueta = "x2",
+                color = Color(0xFFFFC107),
+                progreso = { juego.progresoDoble },
                 modifier = Modifier.weight(1f)
             )
         }

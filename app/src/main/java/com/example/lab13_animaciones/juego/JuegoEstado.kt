@@ -27,10 +27,13 @@ private const val DURACION_INVULNERABLE = 1.2f
 private const val DURACION_ESCUDO = 6f
 private const val DURACION_IMAN = 6f
 private const val INTERVALO_BASE = 1.1f
+private const val DURACION_LENTO = 5f
+private const val DURACION_DOBLE = 8f
 private const val CLAVE_MEJOR = "mejor_puntaje"
 private const val TIEMPO_PRIMERA_ERUPCION = 20f
 
 private val COLORES_ROCOTO = listOf(Color(0xFFD50000), Color(0xFF66BB6A), Color(0xFFFFD54F), Color(0xFFFF6D00))
+private val COLORES_LENTO = listOf(Color(0xFF29B6F6), Color(0xFF81D4FA), Color.White)
 private val COLORES_MONEDA = listOf(Color(0xFFFFC107), Color(0xFFFFE082), Color.White)
 private val COLORES_ESCUDO = listOf(Color(0xFF00E5FF), Color(0xFF81D4FA), Color.White)
 private val COLORES_IMAN = listOf(Color(0xFFAB47BC), Color(0xFFE1BEE7), Color.White)
@@ -38,7 +41,7 @@ private val COLORES_GOLPE = listOf(Color(0xFFFF5252), Color(0xFFFF9800), Color(0
 
 enum class Pantalla { Inicio, Jugando, Pausa, GameOver }
 
-enum class TipoEntidad { ObstaculoAlto, ObstaculoBajo, Moneda, Escudo, Iman, RocaVolcanica, Rocoto }
+enum class TipoEntidad { ObstaculoAlto, ObstaculoBajo, Moneda, Escudo, Iman, RocaVolcanica, Rocoto, CamaraLenta, DoblePuntos }
 
 // Cosas que pasan en el juego y que la pantalla convierte en sonido o vibración
 enum class EventoJuego { Moneda, Salto, Golpe, PowerUp, GameOver }
@@ -119,6 +122,14 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         private set
 
     // Erupción del Misti: carriles en peligro (un bit por carril) y mensaje en pantalla
+    var lentoActivo by mutableStateOf(false)
+        private set
+    var dobleActivo by mutableStateOf(false)
+        private set
+    var progresoLento by mutableFloatStateOf(0f)
+        private set
+    var progresoDoble by mutableFloatStateOf(0f)
+        private set
     var rocotos by mutableIntStateOf(0)
         private set
     var avisoMascara by mutableIntStateOf(0)
@@ -144,6 +155,9 @@ class JuegoEstado(private val prefs: SharedPreferences) {
     private var puntosMonedas = 0
     private var tiempoPolvo = 0f
     private var siguienteId = 0
+    private var tiempoLento = 0f
+    private var tiempoDoble = 0f
+    private var puntosDistancia = 0f
     private var golpeEnErupcion = false
     private var tiempoParaErupcion = TIEMPO_PRIMERA_ERUPCION
     private var faseErupcion = 0 // 0 = nada, 1 = aviso, 2 = cayendo las rocas
@@ -160,6 +174,11 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         puntaje = 0
         distancia = 0f
         puntosMonedas = 0
+        puntosDistancia = 0f
+        lentoActivo = false
+        dobleActivo = false
+        tiempoLento = 0f
+        tiempoDoble = 0f
         rocotos = 0
         racha = 0
         progresoEscudo = 0f
@@ -206,6 +225,8 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         invulnerable = false
         escudoActivo = false
         imanActivo = false
+        lentoActivo = false
+        dobleActivo = false
         avisoMascara = 0
         erupcionActiva = false
         anuncio = null
@@ -239,8 +260,11 @@ class JuegoEstado(private val prefs: SharedPreferences) {
 
         velocidad = (velocidad + ACELERACION * dt).coerceAtMost(VELOCIDAD_MAXIMA)
         nivelVelocidad = ((velocidad - VELOCIDAD_INICIAL) / (VELOCIDAD_MAXIMA - VELOCIDAD_INICIAL)).coerceIn(0f, 1f)
-        distancia += velocidad * dt
-        puntaje = (distancia * 20f).toInt() + puntosMonedas
+        // En cámara lenta el mundo corre a la mitad, pero el jugador sigue igual de ágil
+        val dtMundo = if (lentoActivo) dt * 0.5f else dt
+        distancia += velocidad * dtMundo
+        puntosDistancia += velocidad * dtMundo * 20f * (if (dobleActivo) 2 else 1)
+        puntaje = puntosDistancia.toInt() + puntosMonedas
 
         if (saltando) {
             tiempoSalto -= dt
@@ -261,13 +285,24 @@ class JuegoEstado(private val prefs: SharedPreferences) {
             if (tiempoIman <= 0f) imanActivo = false
         }
 
+        if (lentoActivo) {
+            tiempoLento -= dt
+            progresoLento = (tiempoLento / DURACION_LENTO).coerceIn(0f, 1f)
+            if (tiempoLento <= 0f) lentoActivo = false
+        }
+        if (dobleActivo) {
+            tiempoDoble -= dt
+            progresoDoble = (tiempoDoble / DURACION_DOBLE).coerceIn(0f, 1f)
+            if (tiempoDoble <= 0f) dobleActivo = false
+        }
+
         if (tiempoAnuncio > 0f) {
             tiempoAnuncio -= dt
             if (tiempoAnuncio <= 0f) anuncio = null
         }
         actualizarErupcion(dt)
 
-        tiempoGenerar -= dt
+        tiempoGenerar -= dtMundo
         if (tiempoGenerar <= 0f) {
             generar()
             tiempoGenerar = (INTERVALO_BASE * VELOCIDAD_INICIAL / velocidad).coerceAtLeast(0.45f)
@@ -292,7 +327,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
 
         val eliminar = mutableListOf<Entidad>()
         for (e in entidades) {
-            e.y += velocidad * e.factor * dt
+            e.y += velocidad * e.factor * dtMundo
 
             if (e.consumida) {
                 e.tiempoConsumida += dt
@@ -309,7 +344,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
             when (e.tipo) {
                 TipoEntidad.Moneda -> if (mismoCarril || imanActivo) {
                     e.consumida = true
-                    puntosMonedas += 10 * multiplicador
+                    puntosMonedas += 10 * multiplicador * (if (dobleActivo) 2 else 1)
                     racha++
                     monedas++
                     explosion(xDeCarril(e.carril), e.y, 8, COLORES_MONEDA, 0.3f)
@@ -329,6 +364,24 @@ class JuegoEstado(private val prefs: SharedPreferences) {
                     tiempoIman = DURACION_IMAN
                     progresoIman = 1f
                     explosion(xDeCarril(e.carril), e.y, 12, COLORES_IMAN, 0.35f)
+                    alEvento?.invoke(EventoJuego.PowerUp)
+                }
+                TipoEntidad.CamaraLenta -> if (mismoCarril) {
+                    e.consumida = true
+                    lentoActivo = true
+                    tiempoLento = DURACION_LENTO
+                    progresoLento = 1f
+                    explosion(xDeCarril(e.carril), e.y, 12, COLORES_LENTO, 0.35f)
+                    anunciar("⏳ ¡Cámara lenta!", 1.5f)
+                    alEvento?.invoke(EventoJuego.PowerUp)
+                }
+                TipoEntidad.DoblePuntos -> if (mismoCarril) {
+                    e.consumida = true
+                    dobleActivo = true
+                    tiempoDoble = DURACION_DOBLE
+                    progresoDoble = 1f
+                    explosion(xDeCarril(e.carril), e.y, 12, COLORES_MONEDA, 0.35f)
+                    anunciar("⭐ ¡Puntos x2!", 1.5f)
                     alEvento?.invoke(EventoJuego.PowerUp)
                 }
                 TipoEntidad.Rocoto -> if (mismoCarril) {
@@ -467,12 +520,12 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         when {
             azar < 0.30f -> agregar(TipoEntidad.ObstaculoAlto, carrilNuevo, -0.1f)
             azar < 0.55f -> agregar(TipoEntidad.ObstaculoBajo, carrilNuevo, -0.1f)
-            azar < 0.90f -> for (i in 0 until 3) {
+            azar < 0.88f -> for (i in 0 until 3) {
                 agregar(TipoEntidad.Moneda, carrilNuevo, -0.1f - i * 0.09f)
             }
-            azar < 0.93f -> agregar(TipoEntidad.Rocoto, carrilNuevo, -0.1f)
+            azar < 0.91f -> agregar(TipoEntidad.Rocoto, carrilNuevo, -0.1f)
             else -> agregar(
-                if (Random.nextBoolean()) TipoEntidad.Escudo else TipoEntidad.Iman,
+                listOf(TipoEntidad.Escudo, TipoEntidad.Iman, TipoEntidad.CamaraLenta, TipoEntidad.DoblePuntos).random(),
                 carrilNuevo,
                 -0.1f
             )
