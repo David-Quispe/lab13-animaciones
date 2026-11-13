@@ -16,7 +16,10 @@ fun CapaParticulas(juego: JuegoEstado, modifier: Modifier = Modifier) {
             drawCircle(
                 color = p.color.copy(alpha = vida),
                 radius = p.radio * (0.4f + 0.6f * vida),
-                center = Offset(p.x * size.width, p.y * size.height)
+                center = Offset(
+                    size.width * (0.5f + (p.x - 0.5f) * factorPerspectiva(p.y)),
+                    p.y * size.height
+                )
             )
         }
     }

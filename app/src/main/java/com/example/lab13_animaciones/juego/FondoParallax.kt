@@ -218,6 +218,11 @@ fun FondoParallax(juego: JuegoEstado, modifier: Modifier = Modifier) {
         }
 
         // ---------- Suelo (bajo el horizonte) ----------
+        // Pseudo-3D: x se acerca al centro cuanto más lejos (más arriba) esté el punto
+        val centroPersp = ancho / 2f
+        fun kp(y: Float) = factorPerspectiva(y / altoSuelo)
+        fun px(x: Float, y: Float) = centroPersp + (x - centroPersp) * kp(y)
+
         translate(top = horizonte) {
             clipRect(left = 0f, top = 0f, right = ancho, bottom = altoSuelo) {
                 // Capa lejana: césped con franjas, se mueve lento
@@ -239,25 +244,30 @@ fun FondoParallax(juego: JuegoEstado, modifier: Modifier = Modifier) {
                 while (y2 < altoSuelo + periodo2) {
                     drawCircle(
                         color = arboles,
-                        radius = margen * 0.28f,
-                        center = Offset(margen * 0.4f, y2)
+                        radius = margen * 0.28f * kp(y2),
+                        center = Offset(px(margen * 0.4f, y2), y2)
                     )
                     drawCircle(
                         color = arboles,
-                        radius = margen * 0.28f,
-                        center = Offset(ancho - margen * 0.4f, y2 + periodo2 / 2f)
+                        radius = margen * 0.28f * kp(y2 + periodo2 / 2f),
+                        center = Offset(px(ancho - margen * 0.4f, y2 + periodo2 / 2f), y2 + periodo2 / 2f)
                     )
                     y2 += periodo2
                 }
 
                 // Capa cercana: la carretera, a la velocidad de los obstáculos
-                drawRect(
-                    color = carretera,
-                    topLeft = Offset(margen, 0f),
-                    size = Size(anchoCarretera, altoSuelo)
-                )
-                drawRect(Color.White, Offset(margen - 4f, 0f), Size(4f, altoSuelo))
-                drawRect(Color.White, Offset(margen + anchoCarretera, 0f), Size(4f, altoSuelo))
+                val izqLejos = px(margen, 0f)
+                val derLejos = px(margen + anchoCarretera, 0f)
+                val trapecio = Path().apply {
+                    moveTo(izqLejos, 0f)
+                    lineTo(derLejos, 0f)
+                    lineTo(margen + anchoCarretera, altoSuelo)
+                    lineTo(margen, altoSuelo)
+                    close()
+                }
+                drawPath(path = trapecio, color = carretera)
+                drawLine(Color.White, Offset(izqLejos, 0f), Offset(margen, altoSuelo), strokeWidth = 5f)
+                drawLine(Color.White, Offset(derLejos, 0f), Offset(margen + anchoCarretera, altoSuelo), strokeWidth = 5f)
 
                 val largoRaya = altoSuelo / 8f
                 val periodo3 = largoRaya * 2f
@@ -267,9 +277,9 @@ fun FondoParallax(juego: JuegoEstado, modifier: Modifier = Modifier) {
                     while (y3 < altoSuelo) {
                         drawLine(
                             color = Color.White.copy(alpha = 0.8f),
-                            start = Offset(x, y3),
-                            end = Offset(x, y3 + largoRaya),
-                            strokeWidth = 6f
+                            start = Offset(px(x, y3), y3),
+                            end = Offset(px(x, y3 + largoRaya), y3 + largoRaya),
+                            strokeWidth = 6f * kp(y3)
                         )
                         y3 += periodo3
                     }
@@ -281,13 +291,13 @@ fun FondoParallax(juego: JuegoEstado, modifier: Modifier = Modifier) {
                     for (x in listOf(margen - 14f, margen + anchoCarretera + 14f)) {
                         drawCircle(
                             color = Color(0xFFFFEB3B).copy(alpha = 0.22f * luzNoche * brillo),
-                            radius = 28f,
-                            center = Offset(x, y4)
+                            radius = 28f * kp(y4),
+                            center = Offset(px(x, y4), y4)
                         )
                         drawCircle(
                             color = Color(0xFFFFEB3B).copy(alpha = brillo),
-                            radius = 7f,
-                            center = Offset(x, y4)
+                            radius = 7f * kp(y4),
+                            center = Offset(px(x, y4), y4)
                         )
                     }
                     y4 += periodo2

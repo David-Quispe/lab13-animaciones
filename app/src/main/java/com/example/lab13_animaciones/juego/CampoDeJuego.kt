@@ -47,6 +47,7 @@ import kotlin.math.roundToInt
 
 // Medidas del campo calculadas una sola vez a partir del tamaño disponible
 private class Geometria(
+    val anchoPx: Float,
     val altoPx: Float,
     val margenPx: Float,
     val anchoCarrilPx: Float,
@@ -55,6 +56,12 @@ private class Geometria(
 ) {
     fun xCarril(carril: Int): Float =
         margenPx + carril * anchoCarrilPx + (anchoCarrilPx - tamanoPx) / 2f
+
+    // Acerca la posición x al centro según la profundidad (k = factor de perspectiva)
+    fun proyectarX(xIzquierda: Float, k: Float): Float {
+        val centro = anchoPx / 2f
+        return centro + (xIzquierda + tamanoPx / 2f - centro) * k - tamanoPx / 2f
+    }
 }
 
 @Composable
@@ -67,6 +74,7 @@ fun CampoDeJuego(juego: JuegoEstado, modifier: Modifier = Modifier) {
         val anchoCarrilPx = anchoPx * FRACCION_CARRETERA / 3f
         val tamanoPx = anchoCarrilPx * 0.62f
         val geometria = Geometria(
+            anchoPx = anchoPx,
             altoPx = altoPx - horizontePx,
             margenPx = anchoPx * (1f - FRACCION_CARRETERA) / 2f,
             anchoCarrilPx = anchoCarrilPx,
@@ -93,7 +101,7 @@ fun CampoDeJuego(juego: JuegoEstado, modifier: Modifier = Modifier) {
                 .padding(top = with(densidad) { horizontePx.toDp() })
                 .clipToBounds()
         ) {
-            AvisoErupcion(juego, geometria.margenPx, geometria.anchoCarrilPx)
+            AvisoErupcion(juego, geometria.anchoPx, geometria.altoPx, geometria.margenPx, geometria.anchoCarrilPx)
             for (entidad in juego.entidades) {
                 key(entidad.id) {
                     EntidadView(entidad, geometria, giro)
@@ -122,11 +130,17 @@ private fun EntidadView(entidad: Entidad, g: Geometria, giro: State<Float>) {
 
     Box(
         modifier = Modifier
-            .offset { IntOffset(x.roundToInt(), (entidad.y * g.altoPx - g.tamanoPx / 2f).roundToInt()) }
+            .offset {
+                IntOffset(
+                    g.proyectarX(x, factorPerspectiva(entidad.y)).roundToInt(),
+                    (entidad.y * g.altoPx - g.tamanoPx / 2f).roundToInt()
+                )
+            }
             .size(g.tamanoDp)
             .graphicsLayer {
-                scaleX = escala
-                scaleY = escala
+                val k = factorPerspectiva(entidad.y)
+                scaleX = escala * k
+                scaleY = escala * k
                 alpha = opacidad
             },
         contentAlignment = Alignment.Center
@@ -192,12 +206,18 @@ private fun JugadorView(juego: JuegoEstado, g: Geometria) {
     )
 
     val ySuelo = POS_JUGADOR * g.altoPx - g.tamanoPx / 2f
+    val kp = factorPerspectiva(POS_JUGADOR)
 
     // Sombra que se queda en el suelo mientras el jugador salta
     Box(
         modifier = Modifier
-            .offset { IntOffset((x + g.tamanoPx * 0.1f).roundToInt(), (ySuelo + g.tamanoPx * 0.85f).roundToInt()) }
-            .size(width = g.tamanoDp * 0.8f, height = 10.dp)
+            .offset {
+                IntOffset(
+                    (g.proyectarX(x, kp) + g.tamanoPx * (0.5f - 0.4f * kp)).roundToInt(),
+                    (POS_JUGADOR * g.altoPx + g.tamanoPx * 0.35f * kp).roundToInt()
+                )
+            }
+            .size(width = g.tamanoDp * 0.8f * kp, height = 10.dp * kp)
             .graphicsLayer {
                 scaleX = 1f - 0.35f * altura
                 alpha = 1f - 0.4f * altura
@@ -207,10 +227,10 @@ private fun JugadorView(juego: JuegoEstado, g: Geometria) {
 
     Box(
         modifier = Modifier
-            .offset { IntOffset(x.roundToInt(), (ySuelo - altura * g.tamanoPx * 0.9f).roundToInt()) }
+            .offset { IntOffset(g.proyectarX(x, kp).roundToInt(), (ySuelo - altura * g.tamanoPx * 0.9f).roundToInt()) }
             .size(g.tamanoDp)
             .graphicsLayer {
-                val s = 1f + 0.3f * altura
+                val s = kp * (1f + 0.3f * altura)
                 scaleX = s
                 scaleY = s
                 // Se inclina hacia el lado al que cambia de carril

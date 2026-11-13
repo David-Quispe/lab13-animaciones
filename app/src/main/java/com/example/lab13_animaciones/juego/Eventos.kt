@@ -12,10 +12,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -27,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -35,15 +38,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
-// Franja roja intermitente sobre los carriles por donde van a caer las rocas
+// Franja roja intermitente sobre los carriles por donde van a caer las rocas.
+// Se dibuja como trapecio para que siga la perspectiva de la carretera.
 @Composable
 fun AvisoErupcion(
     juego: JuegoEstado,
+    anchoPx: Float,
+    altoPx: Float,
     margenPx: Float,
     anchoCarrilPx: Float,
     modifier: Modifier = Modifier
 ) {
-    val anchoCarrilDp = with(LocalDensity.current) { anchoCarrilPx.toDp() }
+    val densidad = LocalDensity.current
     val parpadeo by rememberInfiniteTransition(label = "avisoTransicion").animateFloat(
         initialValue = 0.15f,
         targetValue = 0.5f,
@@ -53,24 +59,39 @@ fun AvisoErupcion(
         ),
         label = "avisoParpadeo"
     )
+    val centro = anchoPx / 2f
+    fun xBorde(borde: Int, k: Float): Float = centro + (margenPx + borde * anchoCarrilPx - centro) * k
 
+    Canvas(modifier = modifier.fillMaxSize()) {
+        val kLejos = factorPerspectiva(0f)
+        for (carril in 0..2) {
+            if (((juego.avisoMascara shr carril) and 1) == 1) {
+                val franja = Path().apply {
+                    moveTo(xBorde(carril, kLejos), 0f)
+                    lineTo(xBorde(carril + 1, kLejos), 0f)
+                    lineTo(xBorde(carril + 1, 1f), altoPx)
+                    lineTo(xBorde(carril, 1f), altoPx)
+                    close()
+                }
+                drawPath(franja, Color(0xFFFF1744).copy(alpha = parpadeo))
+            }
+        }
+    }
+
+    val kSigno = factorPerspectiva(0.25f)
     for (carril in 0..2) {
         AnimatedVisibility(
             visible = ((juego.avisoMascara shr carril) and 1) == 1,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = modifier.offset {
-                IntOffset((margenPx + carril * anchoCarrilPx).roundToInt(), 0)
-            }
+            modifier = modifier
+                .offset {
+                    val mitad = (xBorde(carril, kSigno) + xBorde(carril + 1, kSigno)) / 2f
+                    IntOffset((mitad - anchoCarrilPx * kSigno / 2f).roundToInt(), 0)
+                }
+                .width(with(densidad) { (anchoCarrilPx * kSigno).toDp() })
         ) {
-            Box(
-                modifier = Modifier
-                    .width(anchoCarrilDp)
-                    .fillMaxHeight()
-                    .graphicsLayer { alpha = parpadeo }
-                    .background(Color(0xFFFF1744)),
-                contentAlignment = Alignment.TopCenter
-            ) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 Text(
                     text = "!",
                     color = Color.White,
