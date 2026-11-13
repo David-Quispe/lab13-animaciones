@@ -2,6 +2,7 @@ package com.example.lab13_animaciones.juego
 
 import android.content.Context
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,12 +28,14 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 // Ejercicio final: prototipo de videojuego (corredor de tres carriles)
@@ -54,6 +57,22 @@ fun Ejercicio5Screen(modifier: Modifier = Modifier) {
                 anterior = ahora
                 juego.actualizar(dt)
             }
+        }
+    }
+
+    // Efectos al recibir un golpe: la pantalla se sacude y destella en rojo
+    val sacudida = remember { Animatable(0f) }
+    val destello = remember { Animatable(0f) }
+    LaunchedEffect(juego.golpes) {
+        if (juego.golpes > 0) {
+            launch {
+                destello.snapTo(0.45f)
+                destello.animateTo(0f, tween(450))
+            }
+            repeat(6) { i ->
+                sacudida.animateTo(if (i % 2 == 0) 1f else -1f, tween(45))
+            }
+            sacudida.animateTo(0f, tween(45))
         }
     }
 
@@ -92,7 +111,20 @@ fun Ejercicio5Screen(modifier: Modifier = Modifier) {
                     }
                 }
         ) {
-            CampoDeJuego(juego, Modifier.fillMaxSize())
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { translationX = sacudida.value * 16f }
+            ) {
+                CampoDeJuego(juego, Modifier.fillMaxSize())
+                // Destello rojo al recibir un golpe (no bloquea los gestos)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = destello.value }
+                        .background(Color(0xFFD50000))
+                )
+            }
             Superposicion(juego)
         }
 

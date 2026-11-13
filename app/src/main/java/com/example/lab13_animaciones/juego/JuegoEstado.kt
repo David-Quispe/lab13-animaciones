@@ -64,6 +64,10 @@ class JuegoEstado(private val prefs: SharedPreferences) {
     var distancia by mutableFloatStateOf(0f)
         private set
 
+    // Cantidad de golpes recibidos: la pantalla lo usa para sacudirse y destellar
+    var golpes by mutableIntStateOf(0)
+        private set
+
     val entidades = mutableStateListOf<Entidad>()
 
     private var velocidad = VELOCIDAD_INICIAL
@@ -107,6 +111,9 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         entidades.clear()
         carril = 1
         saltando = false
+        invulnerable = false
+        escudoActivo = false
+        imanActivo = false
         pantalla = Pantalla.Inicio
     }
 
@@ -199,6 +206,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         if (invulnerable) return
         e.consumida = true
         invulnerable = true
+        golpes++
         if (escudoActivo) {
             // El escudo absorbe un golpe
             escudoActivo = false
