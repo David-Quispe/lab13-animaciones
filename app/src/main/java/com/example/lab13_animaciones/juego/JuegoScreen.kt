@@ -184,12 +184,13 @@ private fun Superposicion(juego: JuegoEstado) {
             Pantalla.Inicio -> PanelInicio(juego)
             Pantalla.Pausa -> PanelPausa(juego)
             Pantalla.GameOver -> PanelGameOver(juego)
+            Pantalla.Personajes -> PanelPersonajes(juego)
         }
     }
 }
 
 @Composable
-private fun PanelBase(contenido: @Composable ColumnScope.() -> Unit) {
+fun PanelBase(contenido: @Composable ColumnScope.() -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -219,6 +220,9 @@ private fun PanelInicio(juego: JuegoEstado) {
         )
         Button(onClick = { juego.iniciar() }) {
             Text("Jugar")
+        }
+        Button(onClick = { juego.abrirPersonajes() }) {
+            Text("Personajes (${juego.monedasTotales} monedas)")
         }
         Button(onClick = { juego.alternarSonido() }) {
             Text(if (juego.sonidoActivo) "Sonido: sí" else "Sonido: no")

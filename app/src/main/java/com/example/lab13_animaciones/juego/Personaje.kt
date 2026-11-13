@@ -20,6 +20,7 @@ fun Alpaca(
     fase: State<Float>,
     enSalto: Boolean,
     colorManta: Color,
+    especie: Especie = ESPECIES[0],
     modifier: Modifier = Modifier
 ) {
     Canvas(modifier = modifier) {
@@ -29,8 +30,8 @@ fun Alpaca(
         val paso = if (enSalto) 0f else sin(angulo)
         val rebote = if (enSalto) 0f else abs(sin(angulo)) * h * 0.04f
 
-        val lana = Color(0xFFF5E6CC)
-        val lanaOscura = Color(0xFFE0C9A0)
+        val lana = especie.lana
+        val lanaOscura = especie.lanaOscura
         val oscuro = Color(0xFF4E342E)
 
         // Patas: una sube mientras la otra baja
@@ -62,8 +63,8 @@ fun Alpaca(
             drawRect(Color.White, Offset(w * 0.18f, h * 0.66f), Size(w * 0.64f, h * 0.02f))
 
             // Orejas, cuello y cabeza
-            drawOval(lana, Offset(w * 0.27f, h * 0.0f), Size(w * 0.1f, h * 0.18f))
-            drawOval(lana, Offset(w * 0.63f, h * 0.0f), Size(w * 0.1f, h * 0.18f))
+            drawOval(lana, Offset(w * 0.27f, h * 0.0f), Size(w * 0.1f, h * especie.orejaAlto))
+            drawOval(lana, Offset(w * 0.63f, h * 0.0f), Size(w * 0.1f, h * especie.orejaAlto))
             drawRoundRect(
                 color = lana,
                 topLeft = Offset(w * 0.36f, h * 0.16f),
@@ -71,6 +72,10 @@ fun Alpaca(
                 cornerRadius = CornerRadius(w * 0.12f)
             )
             drawOval(lana, Offset(w * 0.28f, h * 0.02f), Size(w * 0.44f, h * 0.3f))
+
+            if (especie.pechoBlanco) {
+                drawOval(Color.White, Offset(w * 0.4f, h * 0.34f), Size(w * 0.2f, h * 0.2f))
+            }
 
             // Penacho de lana, hocico y ojos
             drawCircle(lanaOscura, w * 0.08f, Offset(w * 0.5f, h * 0.05f))

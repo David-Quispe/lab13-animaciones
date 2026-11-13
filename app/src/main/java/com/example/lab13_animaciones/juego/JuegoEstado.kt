@@ -30,6 +30,9 @@ private const val INTERVALO_BASE = 1.1f
 private const val DURACION_LENTO = 5f
 private const val DURACION_DOBLE = 8f
 private const val CLAVE_MEJOR = "mejor_puntaje"
+private const val CLAVE_MONEDAS_TOTALES = "monedas_totales"
+private const val CLAVE_PERSONAJE = "personaje"
+private const val CLAVE_DESBLOQUEADOS = "desbloqueados"
 private const val TIEMPO_PRIMERA_ERUPCION = 20f
 
 private val COLORES_ROCOTO = listOf(Color(0xFFD50000), Color(0xFF66BB6A), Color(0xFFFFD54F), Color(0xFFFF6D00))
@@ -39,7 +42,7 @@ private val COLORES_ESCUDO = listOf(Color(0xFF00E5FF), Color(0xFF81D4FA), Color.
 private val COLORES_IMAN = listOf(Color(0xFFAB47BC), Color(0xFFE1BEE7), Color.White)
 private val COLORES_GOLPE = listOf(Color(0xFFFF5252), Color(0xFFFF9800), Color(0xFFFFEB3B))
 
-enum class Pantalla { Inicio, Jugando, Pausa, GameOver }
+enum class Pantalla { Inicio, Jugando, Pausa, GameOver, Personajes }
 
 enum class TipoEntidad { ObstaculoAlto, ObstaculoBajo, Moneda, Escudo, Iman, RocaVolcanica, Rocoto, CamaraLenta, DoblePuntos }
 
@@ -130,6 +133,18 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         private set
     var progresoDoble by mutableFloatStateOf(0f)
         private set
+    // Progreso que se guarda entre partidas: monedas y personajes
+    var monedasTotales by mutableIntStateOf(prefs.getInt(CLAVE_MONEDAS_TOTALES, 0))
+        private set
+    var personajeActivo by mutableStateOf(prefs.getString(CLAVE_PERSONAJE, "alpaca") ?: "alpaca")
+        private set
+    var desbloqueados by mutableStateOf(
+        prefs.getStringSet(CLAVE_DESBLOQUEADOS, setOf("alpaca"))?.toSet() ?: setOf("alpaca")
+    )
+        private set
+    val especieActual: Especie
+        get() = ESPECIES.firstOrNull { it.id == personajeActivo } ?: ESPECIES[0]
+
     var rocotos by mutableIntStateOf(0)
         private set
     var avisoMascara by mutableIntStateOf(0)
@@ -203,6 +218,29 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         tiempoFase = 0f
         tiempoAnuncio = 0f
         pantalla = Pantalla.Jugando
+    }
+
+    fun abrirPersonajes() {
+        if (pantalla == Pantalla.Inicio) pantalla = Pantalla.Personajes
+    }
+
+    // Usa el personaje si ya está desbloqueado; si no, intenta comprarlo
+    fun elegirPersonaje(especie: Especie) {
+        if (especie.id !in desbloqueados) {
+            if (monedasTotales < especie.costo) return
+            monedasTotales -= especie.costo
+            desbloqueados = desbloqueados + especie.id
+        }
+        personajeActivo = especie.id
+        guardarProgreso()
+    }
+
+    private fun guardarProgreso() {
+        prefs.edit()
+            .putInt(CLAVE_MONEDAS_TOTALES, monedasTotales)
+            .putString(CLAVE_PERSONAJE, personajeActivo)
+            .putStringSet(CLAVE_DESBLOQUEADOS, desbloqueados)
+            .apply()
     }
 
     fun alternarSonido() {
@@ -347,6 +385,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
                     puntosMonedas += 10 * multiplicador * (if (dobleActivo) 2 else 1)
                     racha++
                     monedas++
+                    monedasTotales++
                     explosion(xDeCarril(e.carril), e.y, 8, COLORES_MONEDA, 0.3f)
                     alEvento?.invoke(EventoJuego.Moneda)
                 }
@@ -462,6 +501,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
             nuevoRecord = true
             prefs.edit().putInt(CLAVE_MEJOR, puntaje).apply()
         }
+        guardarProgreso()
         pantalla = Pantalla.GameOver
         alEvento?.invoke(EventoJuego.GameOver)
     }

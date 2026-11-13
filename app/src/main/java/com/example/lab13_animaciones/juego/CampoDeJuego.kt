@@ -167,7 +167,7 @@ private fun JugadorView(juego: JuegoEstado, g: Geometria) {
     )
     // Se pone rojo cuando recibe un golpe
     val color by animateColorAsState(
-        targetValue = if (juego.invulnerable) Color(0xFFE53935) else Color(0xFF29B6F6),
+        targetValue = if (juego.invulnerable) Color(0xFFE53935) else juego.especieActual.manta,
         animationSpec = tween(durationMillis = 150),
         label = "colorJugador"
     )
@@ -223,6 +223,7 @@ private fun JugadorView(juego: JuegoEstado, g: Geometria) {
             fase = fase,
             enSalto = juego.saltando,
             colorManta = color,
+            especie = juego.especieActual,
             modifier = Modifier.fillMaxSize()
         )
 
