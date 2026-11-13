@@ -68,6 +68,18 @@ class JuegoEstado(private val prefs: SharedPreferences) {
     var golpes by mutableIntStateOf(0)
         private set
 
+    // Racha de monedas seguidas (sin recibir golpes) y su multiplicador de puntos
+    var racha by mutableIntStateOf(0)
+        private set
+    val multiplicador: Int
+        get() = 1 + minOf(racha / 8, 4)
+
+    // Cuánto le queda al escudo y al imán (de 1 a 0), para las barras del HUD
+    var progresoEscudo by mutableFloatStateOf(0f)
+        private set
+    var progresoIman by mutableFloatStateOf(0f)
+        private set
+
     val entidades = mutableStateListOf<Entidad>()
 
     private var velocidad = VELOCIDAD_INICIAL
@@ -76,6 +88,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
     private var tiempoEscudo = 0f
     private var tiempoIman = 0f
     private var tiempoGenerar = 0f
+    private var puntosMonedas = 0
     private var siguienteId = 0
 
     fun iniciar() {
@@ -86,6 +99,10 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         monedas = 0
         puntaje = 0
         distancia = 0f
+        puntosMonedas = 0
+        racha = 0
+        progresoEscudo = 0f
+        progresoIman = 0f
         nuevoRecord = false
         invulnerable = false
         escudoActivo = false
@@ -138,7 +155,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
 
         velocidad = (velocidad + ACELERACION * dt).coerceAtMost(VELOCIDAD_MAXIMA)
         distancia += velocidad * dt
-        puntaje = (distancia * 20f).toInt() + monedas * 10
+        puntaje = (distancia * 20f).toInt() + puntosMonedas
 
         if (saltando) {
             tiempoSalto -= dt
@@ -150,10 +167,12 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         }
         if (escudoActivo) {
             tiempoEscudo -= dt
+            progresoEscudo = (tiempoEscudo / DURACION_ESCUDO).coerceIn(0f, 1f)
             if (tiempoEscudo <= 0f) escudoActivo = false
         }
         if (imanActivo) {
             tiempoIman -= dt
+            progresoIman = (tiempoIman / DURACION_IMAN).coerceIn(0f, 1f)
             if (tiempoIman <= 0f) imanActivo = false
         }
 
@@ -182,17 +201,21 @@ class JuegoEstado(private val prefs: SharedPreferences) {
             when (e.tipo) {
                 TipoEntidad.Moneda -> if (mismoCarril || imanActivo) {
                     e.consumida = true
+                    puntosMonedas += 10 * multiplicador
+                    racha++
                     monedas++
                 }
                 TipoEntidad.Escudo -> if (mismoCarril) {
                     e.consumida = true
                     escudoActivo = true
                     tiempoEscudo = DURACION_ESCUDO
+                    progresoEscudo = 1f
                 }
                 TipoEntidad.Iman -> if (mismoCarril) {
                     e.consumida = true
                     imanActivo = true
                     tiempoIman = DURACION_IMAN
+                    progresoIman = 1f
                 }
                 TipoEntidad.ObstaculoAlto -> if (mismoCarril) golpear(e)
                 // El obstáculo bajo se puede saltar
@@ -207,6 +230,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         e.consumida = true
         invulnerable = true
         golpes++
+        racha = 0
         if (escudoActivo) {
             // El escudo absorbe un golpe
             escudoActivo = false
