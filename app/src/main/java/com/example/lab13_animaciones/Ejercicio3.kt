@@ -75,6 +75,27 @@ fun Ejercicio3Screen(modifier: Modifier = Modifier) {
                     .background(Color(0xFFE91E63), RoundedCornerShape(12.dp))
             )
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Orden invertido: el fondo se dibuja antes del offset, así que el cuadro
+        // solo cambia de tamaño y lo que se desplaza es el contenido (el texto).
+        Text("Orden invertido: background -> size -> offset")
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(Color(0xFF009688), RoundedCornerShape(12.dp))
+                    .size(tamano)
+                    .offset(x = desplazX, y = desplazY)
+            ) {
+                Text("offset", color = Color.White)
+            }
+        }
     }
 }
 
