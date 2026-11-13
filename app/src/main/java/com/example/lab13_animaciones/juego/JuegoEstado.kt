@@ -32,6 +32,7 @@ private const val DURACION_DOBLE = 8f
 private const val CLAVE_MEJOR = "mejor_puntaje"
 private const val CLAVE_MONEDAS_TOTALES = "monedas_totales"
 private const val CLAVE_LOGROS = "logros"
+private const val CLAVE_TUTORIAL = "tutorial_visto"
 private const val CLAVE_PERSONAJE = "personaje"
 private const val CLAVE_DESBLOQUEADOS = "desbloqueados"
 private const val TIEMPO_PRIMERA_ERUPCION = 20f
@@ -43,7 +44,7 @@ private val COLORES_ESCUDO = listOf(Color(0xFF00E5FF), Color(0xFF81D4FA), Color.
 private val COLORES_IMAN = listOf(Color(0xFFAB47BC), Color(0xFFE1BEE7), Color.White)
 private val COLORES_GOLPE = listOf(Color(0xFFFF5252), Color(0xFFFF9800), Color(0xFFFFEB3B))
 
-enum class Pantalla { Inicio, Jugando, Pausa, GameOver, Personajes, Logros }
+enum class Pantalla { Inicio, Jugando, Pausa, GameOver, Personajes, Logros, Tutorial }
 
 enum class TipoEntidad { ObstaculoAlto, ObstaculoBajo, Moneda, Escudo, Iman, RocaVolcanica, Rocoto, CamaraLenta, DoblePuntos }
 
@@ -223,6 +224,21 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         tiempoFase = 0f
         tiempoAnuncio = 0f
         pantalla = Pantalla.Jugando
+    }
+
+    // La primera vez que se juega se muestra el tutorial antes de empezar
+    fun jugar() {
+        if (prefs.getBoolean(CLAVE_TUTORIAL, false)) iniciar() else pantalla = Pantalla.Tutorial
+    }
+
+    fun verTutorial() {
+        if (pantalla == Pantalla.Inicio) pantalla = Pantalla.Tutorial
+    }
+
+    fun terminarTutorial() {
+        val primeraVez = !prefs.getBoolean(CLAVE_TUTORIAL, false)
+        prefs.edit().putBoolean(CLAVE_TUTORIAL, true).apply()
+        if (primeraVez) iniciar() else pantalla = Pantalla.Inicio
     }
 
     fun abrirLogros() {

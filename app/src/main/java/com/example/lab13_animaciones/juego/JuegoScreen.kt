@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -186,6 +188,7 @@ private fun Superposicion(juego: JuegoEstado) {
             Pantalla.GameOver -> PanelGameOver(juego)
             Pantalla.Personajes -> PanelPersonajes(juego)
             Pantalla.Logros -> PanelLogros(juego)
+            Pantalla.Tutorial -> PanelTutorial(juego)
         }
     }
 }
@@ -199,7 +202,7 @@ fun PanelBase(contenido: @Composable ColumnScope.() -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
             content = contenido
@@ -214,13 +217,16 @@ private fun PanelInicio(juego: JuegoEstado) {
         Text("Mejor puntaje: ${juego.mejorPuntaje}", color = Color(0xFFFFC107), fontSize = 16.sp)
         Text(
             text = "Desliza a los lados para cambiar de carril y hacia arriba para saltar. " +
-                "Salta los cactus, esquiva las vallas y junta monedas.",
+                "Salta los cactus, esquiva las combis y las rocas del Misti, y junta monedas y rocotos.",
             color = Color.White,
             fontSize = 14.sp,
             textAlign = TextAlign.Center
         )
-        Button(onClick = { juego.iniciar() }) {
+        Button(onClick = { juego.jugar() }) {
             Text("Jugar")
+        }
+        Button(onClick = { juego.verTutorial() }) {
+            Text("Cómo jugar")
         }
         Button(onClick = { juego.abrirLogros() }) {
             Text("Logros (${juego.logrosObtenidos.size}/${LOGROS.size})")
