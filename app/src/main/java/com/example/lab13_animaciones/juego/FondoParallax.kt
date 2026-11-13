@@ -203,6 +203,20 @@ fun FondoParallax(juego: JuegoEstado, modifier: Modifier = Modifier) {
         }
         drawPath(path = nieve, color = Color.White.copy(alpha = 0.9f))
 
+        // Durante la erupción el cráter brilla y sale humo
+        if (juego.erupcionActiva) {
+            drawCircle(
+                color = Color(0xFFFF6D00).copy(alpha = 0.55f * brillo),
+                radius = horizonte * 0.16f,
+                center = Offset(cumbreX + ancho * 0.005f, cumbreY)
+            )
+            drawOval(
+                color = Color(0xFF424242).copy(alpha = 0.55f),
+                topLeft = Offset(cumbreX - ancho * 0.05f, cumbreY - horizonte * 0.16f),
+                size = Size(ancho * 0.1f, horizonte * 0.2f)
+            )
+        }
+
         // ---------- Suelo (bajo el horizonte) ----------
         translate(top = horizonte) {
             clipRect(left = 0f, top = 0f, right = ancho, bottom = altoSuelo) {

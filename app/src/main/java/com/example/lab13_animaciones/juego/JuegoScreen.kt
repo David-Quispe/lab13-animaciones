@@ -158,6 +158,7 @@ fun Ejercicio5Screen(modifier: Modifier = Modifier) {
                         .background(Color(0xFFD50000))
                 )
             }
+            BannerAnuncio(juego, Modifier.align(Alignment.TopCenter))
             Superposicion(juego)
         }
 

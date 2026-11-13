@@ -28,6 +28,7 @@ private const val DURACION_ESCUDO = 6f
 private const val DURACION_IMAN = 6f
 private const val INTERVALO_BASE = 1.1f
 private const val CLAVE_MEJOR = "mejor_puntaje"
+private const val TIEMPO_PRIMERA_ERUPCION = 20f
 
 private val COLORES_MONEDA = listOf(Color(0xFFFFC107), Color(0xFFFFE082), Color.White)
 private val COLORES_ESCUDO = listOf(Color(0xFF00E5FF), Color(0xFF81D4FA), Color.White)
@@ -36,13 +37,19 @@ private val COLORES_GOLPE = listOf(Color(0xFFFF5252), Color(0xFFFF9800), Color(0
 
 enum class Pantalla { Inicio, Jugando, Pausa, GameOver }
 
-enum class TipoEntidad { ObstaculoAlto, ObstaculoBajo, Moneda, Escudo, Iman }
+enum class TipoEntidad { ObstaculoAlto, ObstaculoBajo, Moneda, Escudo, Iman, RocaVolcanica }
 
 // Cosas que pasan en el juego y que la pantalla convierte en sonido o vibración
 enum class EventoJuego { Moneda, Salto, Golpe, PowerUp, GameOver }
 
 // Todo lo que baja por la carretera. La posición y va de 0 (arriba) a 1 (abajo).
-class Entidad(val id: Int, val tipo: TipoEntidad, val carril: Int, yInicial: Float) {
+class Entidad(
+    val id: Int,
+    val tipo: TipoEntidad,
+    val carril: Int,
+    yInicial: Float,
+    val factor: Float = 1f
+) {
     var y by mutableFloatStateOf(yInicial)
     var consumida by mutableStateOf(false)
     var tiempoConsumida = 0f
@@ -110,6 +117,14 @@ class JuegoEstado(private val prefs: SharedPreferences) {
     var progresoIman by mutableFloatStateOf(0f)
         private set
 
+    // Erupción del Misti: carriles en peligro (un bit por carril) y mensaje en pantalla
+    var avisoMascara by mutableIntStateOf(0)
+        private set
+    var erupcionActiva by mutableStateOf(false)
+        private set
+    var anuncio by mutableStateOf<String?>(null)
+        private set
+
     var sonidoActivo by mutableStateOf(true)
         private set
     var alEvento: ((EventoJuego) -> Unit)? = null
@@ -126,6 +141,11 @@ class JuegoEstado(private val prefs: SharedPreferences) {
     private var puntosMonedas = 0
     private var tiempoPolvo = 0f
     private var siguienteId = 0
+    private var golpeEnErupcion = false
+    private var tiempoParaErupcion = TIEMPO_PRIMERA_ERUPCION
+    private var faseErupcion = 0 // 0 = nada, 1 = aviso, 2 = cayendo las rocas
+    private var tiempoFase = 0f
+    private var tiempoAnuncio = 0f
 
     fun iniciar() {
         entidades.clear()
@@ -151,6 +171,14 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         tiempoEscudo = 0f
         tiempoIman = 0f
         tiempoGenerar = 0.6f
+        avisoMascara = 0
+        erupcionActiva = false
+        anuncio = null
+        golpeEnErupcion = false
+        tiempoParaErupcion = TIEMPO_PRIMERA_ERUPCION
+        faseErupcion = 0
+        tiempoFase = 0f
+        tiempoAnuncio = 0f
         pantalla = Pantalla.Jugando
     }
 
@@ -174,6 +202,9 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         invulnerable = false
         escudoActivo = false
         imanActivo = false
+        avisoMascara = 0
+        erupcionActiva = false
+        anuncio = null
         pantalla = Pantalla.Inicio
     }
 
@@ -226,6 +257,12 @@ class JuegoEstado(private val prefs: SharedPreferences) {
             if (tiempoIman <= 0f) imanActivo = false
         }
 
+        if (tiempoAnuncio > 0f) {
+            tiempoAnuncio -= dt
+            if (tiempoAnuncio <= 0f) anuncio = null
+        }
+        actualizarErupcion(dt)
+
         tiempoGenerar -= dt
         if (tiempoGenerar <= 0f) {
             generar()
@@ -251,7 +288,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
 
         val eliminar = mutableListOf<Entidad>()
         for (e in entidades) {
-            e.y += velocidad * dt
+            e.y += velocidad * e.factor * dt
 
             if (e.consumida) {
                 e.tiempoConsumida += dt
@@ -290,7 +327,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
                     explosion(xDeCarril(e.carril), e.y, 12, COLORES_IMAN, 0.35f)
                     alEvento?.invoke(EventoJuego.PowerUp)
                 }
-                TipoEntidad.ObstaculoAlto -> if (mismoCarril) golpear(e)
+                TipoEntidad.ObstaculoAlto, TipoEntidad.RocaVolcanica -> if (mismoCarril) golpear(e)
                 // El obstáculo bajo se puede saltar
                 TipoEntidad.ObstaculoBajo -> if (mismoCarril && !saltando) golpear(e)
             }
@@ -339,6 +376,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         invulnerable = true
         golpes++
         racha = 0
+        if (erupcionActiva) golpeEnErupcion = true
         explosion(xDeCarril(carril), POS_JUGADOR, 18, COLORES_GOLPE, 0.5f)
         alEvento?.invoke(EventoJuego.Golpe)
         if (escudoActivo) {
@@ -363,9 +401,57 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         alEvento?.invoke(EventoJuego.GameOver)
     }
 
+    // Cada cierto tiempo el Misti hace erupción: primero avisa qué carriles están
+    // en peligro y después lanza rocas por ellos. Siempre queda un carril libre.
+    private fun actualizarErupcion(dt: Float) {
+        when (faseErupcion) {
+            0 -> {
+                tiempoParaErupcion -= dt
+                if (tiempoParaErupcion <= 0f) {
+                    val libre = Random.nextInt(3)
+                    avisoMascara = 7 and (1 shl libre).inv()
+                    erupcionActiva = true
+                    golpeEnErupcion = false
+                    faseErupcion = 1
+                    tiempoFase = 1.8f
+                    anunciar("¡El Misti hace erupción!", 2.2f)
+                }
+            }
+            1 -> {
+                tiempoFase -= dt
+                if (tiempoFase <= 0f) {
+                    for (c in 0..2) {
+                        if (((avisoMascara shr c) and 1) == 1) {
+                            for (i in 0 until 3) {
+                                agregar(TipoEntidad.RocaVolcanica, c, -0.1f - i * 0.4f, 1.6f)
+                            }
+                        }
+                    }
+                    avisoMascara = 0
+                    faseErupcion = 2
+                    tiempoFase = 4.5f
+                }
+            }
+            else -> {
+                tiempoFase -= dt
+                if (tiempoFase <= 0f) {
+                    erupcionActiva = false
+                    faseErupcion = 0
+                    tiempoParaErupcion = 22f + Random.nextFloat() * 10f
+                }
+            }
+        }
+    }
+
+    private fun anunciar(texto: String, duracion: Float) {
+        anuncio = texto
+        tiempoAnuncio = duracion
+    }
+
     private fun generar() {
         val carrilNuevo = Random.nextInt(3)
-        val azar = Random.nextFloat()
+        // Durante la erupción solo salen monedas, para que siempre haya una salida
+        val azar = if (erupcionActiva) 0.6f + Random.nextFloat() * 0.2f else Random.nextFloat()
         when {
             azar < 0.30f -> agregar(TipoEntidad.ObstaculoAlto, carrilNuevo, -0.1f)
             azar < 0.55f -> agregar(TipoEntidad.ObstaculoBajo, carrilNuevo, -0.1f)
@@ -380,7 +466,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         }
     }
 
-    private fun agregar(tipo: TipoEntidad, carril: Int, y: Float) {
-        entidades.add(Entidad(siguienteId++, tipo, carril, y))
+    private fun agregar(tipo: TipoEntidad, carril: Int, y: Float, factor: Float = 1f) {
+        entidades.add(Entidad(siguienteId++, tipo, carril, y, factor))
     }
 }

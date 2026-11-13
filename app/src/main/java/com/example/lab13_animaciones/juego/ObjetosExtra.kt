@@ -50,3 +50,33 @@ fun CombiView(modifier: Modifier = Modifier) {
         drawRoundRect(Color(0xFF424242), Offset(w * 0.38f, h * 0.5f), Size(w * 0.24f, h * 0.08f), CornerRadius(w * 0.02f))
     }
 }
+
+// Roca volcánica incandescente que cae durante la erupción del Misti
+@Composable
+fun RocaView(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val r = size.minDimension / 2f
+        // Estela de fuego detrás de la roca (arriba, porque cae)
+        drawOval(
+            color = Color(0xFFFF6D00).copy(alpha = 0.4f),
+            topLeft = Offset(center.x - r * 0.35f, center.y - r * 1.1f),
+            size = Size(r * 0.7f, r * 1.0f)
+        )
+        drawCircle(Color(0xFFFF6D00).copy(alpha = 0.35f), r, center)
+
+        val puntos = listOf(
+            0.0f to 0.62f, 0.9f to 0.5f, 1.8f to 0.64f, 2.7f to 0.52f,
+            3.6f to 0.66f, 4.5f to 0.5f, 5.4f to 0.6f
+        )
+        val roca = Path()
+        for ((i, p) in puntos.withIndex()) {
+            val x = center.x + cos(p.first) * r * p.second
+            val y = center.y + sin(p.first) * r * p.second
+            if (i == 0) roca.moveTo(x, y) else roca.lineTo(x, y)
+        }
+        roca.close()
+        drawPath(path = roca, color = Color(0xFF4E342E))
+        drawPath(path = roca, color = Color(0xFFFF6D00), style = Stroke(width = r * 0.12f))
+        drawCircle(Color(0xFFFFAB40), r * 0.1f, Offset(center.x - r * 0.2f, center.y - r * 0.15f))
+    }
+}

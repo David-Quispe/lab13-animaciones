@@ -93,6 +93,7 @@ fun CampoDeJuego(juego: JuegoEstado, modifier: Modifier = Modifier) {
                 .padding(top = with(densidad) { horizontePx.toDp() })
                 .clipToBounds()
         ) {
+            AvisoErupcion(juego, geometria.margenPx, geometria.anchoCarrilPx)
             for (entidad in juego.entidades) {
                 key(entidad.id) {
                     EntidadView(entidad, geometria, giro)
@@ -136,6 +137,7 @@ private fun EntidadView(entidad: Entidad, g: Geometria, giro: State<Float>) {
             TipoEntidad.Moneda -> MonedaView(giro, Modifier.fillMaxSize(0.75f))
             TipoEntidad.Escudo -> EscudoView(Modifier.fillMaxSize(0.85f))
             TipoEntidad.Iman -> ImanView(Modifier.fillMaxSize(0.85f))
+            TipoEntidad.RocaVolcanica -> RocaView(Modifier.fillMaxSize(0.9f))
         }
     }
 }
