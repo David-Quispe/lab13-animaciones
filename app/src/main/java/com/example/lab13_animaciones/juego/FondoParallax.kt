@@ -70,6 +70,7 @@ private val PALETA_NOCHE = Paleta(
 
 private val ESTRELLAS_X = floatArrayOf(0.08f, 0.2f, 0.52f, 0.64f, 0.9f, 0.45f)
 private val ESTRELLAS_Y = floatArrayOf(0.2f, 0.55f, 0.15f, 0.5f, 0.3f, 0.7f)
+private val LINEAS_X = floatArrayOf(0.05f, 0.15f, 0.28f, 0.4f, 0.55f, 0.68f, 0.8f, 0.92f)
 
 @Composable
 private fun animar(objetivo: Color): Color =
@@ -276,6 +277,30 @@ fun FondoParallax(juego: JuegoEstado, modifier: Modifier = Modifier) {
                         )
                     }
                     y4 += periodo2
+                }
+            }
+        }
+
+        // Líneas de velocidad: aparecen cuando el juego va rápido
+        val nivel = juego.nivelVelocidad
+        if (nivel > 0.3f) {
+            val alfa = ((nivel - 0.3f) / 0.7f).coerceIn(0f, 1f) * 0.35f
+            val largoLinea = altoSuelo * 0.12f
+            val periodoLinea = altoSuelo * 0.6f
+            for (i in LINEAS_X.indices) {
+                var yl = (recorrido * 2.2f + i * 97f) % periodoLinea - largoLinea
+                while (yl < altoSuelo) {
+                    val ini = yl.coerceAtLeast(0f)
+                    val fin = yl + largoLinea
+                    if (fin > ini) {
+                        drawLine(
+                            color = Color.White.copy(alpha = alfa),
+                            start = Offset(ancho * LINEAS_X[i], horizonte + ini),
+                            end = Offset(ancho * LINEAS_X[i], horizonte + fin),
+                            strokeWidth = 3f
+                        )
+                    }
+                    yl += periodoLinea
                 }
             }
         }

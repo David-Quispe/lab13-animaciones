@@ -87,6 +87,9 @@ class JuegoEstado(private val prefs: SharedPreferences) {
     // Cuántas "alturas de pantalla" ha recorrido el jugador (la usa el fondo)
     var distancia by mutableFloatStateOf(0f)
         private set
+    // Qué tan rápido va el juego, de 0 (inicio) a 1 (velocidad máxima)
+    var nivelVelocidad by mutableFloatStateOf(0f)
+        private set
 
     // Cantidad de golpes recibidos: la pantalla lo usa para sacudirse y destellar
     var golpes by mutableIntStateOf(0)
@@ -135,6 +138,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         escudoActivo = false
         imanActivo = false
         velocidad = VELOCIDAD_INICIAL
+        nivelVelocidad = 0f
         tiempoSalto = 0f
         tiempoInvulnerable = 0f
         tiempoEscudo = 0f
@@ -187,6 +191,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         if (pantalla != Pantalla.Jugando) return
 
         velocidad = (velocidad + ACELERACION * dt).coerceAtMost(VELOCIDAD_MAXIMA)
+        nivelVelocidad = ((velocidad - VELOCIDAD_INICIAL) / (VELOCIDAD_MAXIMA - VELOCIDAD_INICIAL)).coerceIn(0f, 1f)
         distancia += velocidad * dt
         puntaje = (distancia * 20f).toInt() + puntosMonedas
 
@@ -218,7 +223,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         // Polvo detrás de la alpaca mientras corre
         tiempoPolvo -= dt
         if (tiempoPolvo <= 0f && !saltando) {
-            tiempoPolvo = 0.05f
+            tiempoPolvo = 0.05f - 0.03f * nivelVelocidad
             particulas.add(
                 Particula(
                     xInicial = xDeCarril(carril) + (Random.nextFloat() - 0.5f) * 0.06f,
