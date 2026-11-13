@@ -131,7 +131,7 @@ private fun EntidadView(entidad: Entidad, g: Geometria, giro: State<Float>) {
         contentAlignment = Alignment.Center
     ) {
         when (entidad.tipo) {
-            TipoEntidad.ObstaculoAlto -> ValaView(Modifier.fillMaxSize())
+            TipoEntidad.ObstaculoAlto -> CombiView(Modifier.fillMaxSize())
             TipoEntidad.ObstaculoBajo -> CactusView(Modifier.fillMaxSize())
             TipoEntidad.Moneda -> MonedaView(giro, Modifier.fillMaxSize(0.75f))
             TipoEntidad.Escudo -> EscudoView(Modifier.fillMaxSize(0.85f))
