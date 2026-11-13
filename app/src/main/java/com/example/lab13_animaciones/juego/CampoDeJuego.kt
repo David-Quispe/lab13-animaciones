@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -57,27 +58,36 @@ private class Geometria(
 @Composable
 fun CampoDeJuego(juego: JuegoEstado, modifier: Modifier = Modifier) {
     BoxWithConstraints(modifier = modifier.clipToBounds()) {
+        val densidad = LocalDensity.current
         val anchoPx = constraints.maxWidth.toFloat()
         val altoPx = constraints.maxHeight.toFloat()
+        val horizontePx = altoPx * FRACCION_HORIZONTE
         val anchoCarrilPx = anchoPx * FRACCION_CARRETERA / 3f
         val tamanoPx = anchoCarrilPx * 0.62f
         val geometria = Geometria(
-            altoPx = altoPx,
+            altoPx = altoPx - horizontePx,
             margenPx = anchoPx * (1f - FRACCION_CARRETERA) / 2f,
             anchoCarrilPx = anchoCarrilPx,
             tamanoPx = tamanoPx,
-            tamanoDp = with(LocalDensity.current) { tamanoPx.toDp() }
+            tamanoDp = with(densidad) { tamanoPx.toDp() }
         )
 
         FondoParallax(juego)
 
-        for (entidad in juego.entidades) {
-            key(entidad.id) {
-                EntidadView(entidad, geometria)
+        // Todo lo que corre por la carretera nace en el horizonte y se recorta ahí
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = with(densidad) { horizontePx.toDp() })
+                .clipToBounds()
+        ) {
+            for (entidad in juego.entidades) {
+                key(entidad.id) {
+                    EntidadView(entidad, geometria)
+                }
             }
+            JugadorView(juego, geometria)
         }
-
-        JugadorView(juego, geometria)
     }
 }
 

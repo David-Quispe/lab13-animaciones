@@ -12,6 +12,7 @@ import kotlin.random.Random
 
 const val VIDAS_INICIALES = 3
 const val FRACCION_CARRETERA = 0.8f
+const val FRACCION_HORIZONTE = 0.12f
 const val POS_JUGADOR = 0.78f
 
 private const val VELOCIDAD_INICIAL = 0.45f
