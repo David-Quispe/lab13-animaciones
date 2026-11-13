@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
@@ -73,6 +74,16 @@ fun CampoDeJuego(juego: JuegoEstado, modifier: Modifier = Modifier) {
             tamanoDp = with(densidad) { tamanoPx.toDp() }
         )
 
+        // Giro compartido por todas las monedas
+        val giro = rememberInfiniteTransition(label = "giroMonedas").animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1000, easing = LinearEasing)
+            ),
+            label = "giro"
+        )
+
         FondoParallax(juego)
 
         // Todo lo que corre por la carretera nace en el horizonte y se recorta ahí
@@ -84,7 +95,7 @@ fun CampoDeJuego(juego: JuegoEstado, modifier: Modifier = Modifier) {
         ) {
             for (entidad in juego.entidades) {
                 key(entidad.id) {
-                    EntidadView(entidad, geometria)
+                    EntidadView(entidad, geometria, giro)
                 }
             }
             JugadorView(juego, geometria)
@@ -93,7 +104,7 @@ fun CampoDeJuego(juego: JuegoEstado, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun EntidadView(entidad: Entidad, g: Geometria) {
+private fun EntidadView(entidad: Entidad, g: Geometria, giro: State<Float>) {
     // Al recogerla (o chocar con ella) crece y se desvanece
     val escala by animateFloatAsState(
         targetValue = if (entidad.consumida) 1.8f else 1f,
@@ -119,24 +130,12 @@ private fun EntidadView(entidad: Entidad, g: Geometria) {
         contentAlignment = Alignment.Center
     ) {
         when (entidad.tipo) {
-            TipoEntidad.ObstaculoAlto -> Etiqueta("🚧", Color(0xFFB71C1C), RoundedCornerShape(10.dp))
-            TipoEntidad.ObstaculoBajo -> Etiqueta("🌵", Color(0xFFEF6C00), RoundedCornerShape(10.dp))
-            TipoEntidad.Moneda -> Etiqueta("$", Color(0xFFFFC107), CircleShape, 0.7f)
-            TipoEntidad.Escudo -> Etiqueta("E", Color(0xFF00B0FF), CircleShape, 0.75f)
-            TipoEntidad.Iman -> Etiqueta("I", Color(0xFFAB47BC), CircleShape, 0.75f)
+            TipoEntidad.ObstaculoAlto -> ValaView(Modifier.fillMaxSize())
+            TipoEntidad.ObstaculoBajo -> CactusView(Modifier.fillMaxSize())
+            TipoEntidad.Moneda -> MonedaView(giro, Modifier.fillMaxSize(0.75f))
+            TipoEntidad.Escudo -> EscudoView(Modifier.fillMaxSize(0.85f))
+            TipoEntidad.Iman -> ImanView(Modifier.fillMaxSize(0.85f))
         }
-    }
-}
-
-@Composable
-private fun Etiqueta(texto: String, fondo: Color, forma: Shape, fraccion: Float = 1f) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize(fraccion)
-            .background(fondo, forma),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = texto, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
     }
 }
 
