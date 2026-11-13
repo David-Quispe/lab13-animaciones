@@ -31,6 +31,7 @@ private const val DURACION_LENTO = 5f
 private const val DURACION_DOBLE = 8f
 private const val CLAVE_MEJOR = "mejor_puntaje"
 private const val CLAVE_MONEDAS_TOTALES = "monedas_totales"
+private const val CLAVE_LOGROS = "logros"
 private const val CLAVE_PERSONAJE = "personaje"
 private const val CLAVE_DESBLOQUEADOS = "desbloqueados"
 private const val TIEMPO_PRIMERA_ERUPCION = 20f
@@ -42,7 +43,7 @@ private val COLORES_ESCUDO = listOf(Color(0xFF00E5FF), Color(0xFF81D4FA), Color.
 private val COLORES_IMAN = listOf(Color(0xFFAB47BC), Color(0xFFE1BEE7), Color.White)
 private val COLORES_GOLPE = listOf(Color(0xFFFF5252), Color(0xFFFF9800), Color(0xFFFFEB3B))
 
-enum class Pantalla { Inicio, Jugando, Pausa, GameOver, Personajes }
+enum class Pantalla { Inicio, Jugando, Pausa, GameOver, Personajes, Logros }
 
 enum class TipoEntidad { ObstaculoAlto, ObstaculoBajo, Moneda, Escudo, Iman, RocaVolcanica, Rocoto, CamaraLenta, DoblePuntos }
 
@@ -142,6 +143,8 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         prefs.getStringSet(CLAVE_DESBLOQUEADOS, setOf("alpaca"))?.toSet() ?: setOf("alpaca")
     )
         private set
+    var logrosObtenidos by mutableStateOf(prefs.getStringSet(CLAVE_LOGROS, emptySet())?.toSet() ?: emptySet())
+        private set
     val especieActual: Especie
         get() = ESPECIES.firstOrNull { it.id == personajeActivo } ?: ESPECIES[0]
 
@@ -170,6 +173,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
     private var puntosMonedas = 0
     private var tiempoPolvo = 0f
     private var siguienteId = 0
+    private var saltosPartida = 0
     private var tiempoLento = 0f
     private var tiempoDoble = 0f
     private var puntosDistancia = 0f
@@ -194,6 +198,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         dobleActivo = false
         tiempoLento = 0f
         tiempoDoble = 0f
+        saltosPartida = 0
         rocotos = 0
         racha = 0
         progresoEscudo = 0f
@@ -218,6 +223,20 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         tiempoFase = 0f
         tiempoAnuncio = 0f
         pantalla = Pantalla.Jugando
+    }
+
+    fun abrirLogros() {
+        if (pantalla == Pantalla.Inicio) pantalla = Pantalla.Logros
+    }
+
+    // Registra el logro una sola vez y avisa con el cartel de arriba
+    private fun desbloquear(id: String) {
+        if (id in logrosObtenidos) return
+        val logro = LOGROS.firstOrNull { it.id == id } ?: return
+        logrosObtenidos = logrosObtenidos + id
+        prefs.edit().putStringSet(CLAVE_LOGROS, logrosObtenidos).apply()
+        anunciar("🏆 Logro: ${logro.titulo}", 2.5f)
+        alEvento?.invoke(EventoJuego.PowerUp)
     }
 
     fun abrirPersonajes() {
@@ -283,6 +302,8 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         if (pantalla == Pantalla.Jugando && !saltando) {
             saltando = true
             tiempoSalto = DURACION_SALTO
+            saltosPartida++
+            if (saltosPartida >= 15) desbloquear("saltarin")
             alEvento?.invoke(EventoJuego.Salto)
         }
     }
@@ -303,6 +324,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         distancia += velocidad * dtMundo
         puntosDistancia += velocidad * dtMundo * 20f * (if (dobleActivo) 2 else 1)
         puntaje = puntosDistancia.toInt() + puntosMonedas
+        if (puntaje >= 1000) desbloquear("corredor")
 
         if (saltando) {
             tiempoSalto -= dt
@@ -386,6 +408,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
                     racha++
                     monedas++
                     monedasTotales++
+                    if (monedas >= 50) desbloquear("coleccionista")
                     explosion(xDeCarril(e.carril), e.y, 8, COLORES_MONEDA, 0.3f)
                     alEvento?.invoke(EventoJuego.Moneda)
                 }
@@ -427,6 +450,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
                     e.consumida = true
                     puntosMonedas += 100
                     rocotos++
+                    desbloquear("rocotero")
                     explosion(xDeCarril(e.carril), e.y, 30, COLORES_ROCOTO, 0.6f)
                     anunciar("🌶️ ¡Rocoto picante! +100", 2f)
                     alEvento?.invoke(EventoJuego.PowerUp)
@@ -541,6 +565,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
                 tiempoFase -= dt
                 if (tiempoFase <= 0f) {
                     erupcionActiva = false
+                    if (!golpeEnErupcion) desbloquear("superviviente")
                     faseErupcion = 0
                     tiempoParaErupcion = 22f + Random.nextFloat() * 10f
                 }

@@ -185,6 +185,7 @@ private fun Superposicion(juego: JuegoEstado) {
             Pantalla.Pausa -> PanelPausa(juego)
             Pantalla.GameOver -> PanelGameOver(juego)
             Pantalla.Personajes -> PanelPersonajes(juego)
+            Pantalla.Logros -> PanelLogros(juego)
         }
     }
 }
@@ -220,6 +221,9 @@ private fun PanelInicio(juego: JuegoEstado) {
         )
         Button(onClick = { juego.iniciar() }) {
             Text("Jugar")
+        }
+        Button(onClick = { juego.abrirLogros() }) {
+            Text("Logros (${juego.logrosObtenidos.size}/${LOGROS.size})")
         }
         Button(onClick = { juego.abrirPersonajes() }) {
             Text("Personajes (${juego.monedasTotales} monedas)")
