@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.lab13_animaciones.juego.Ejercicio5Screen
 import com.example.lab13_animaciones.ui.theme.Lab13animacionesTheme
 
 class MainActivity : ComponentActivity() {
@@ -29,7 +30,7 @@ class MainActivity : ComponentActivity() {
             Lab13animacionesTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     var seleccionado by remember { mutableIntStateOf(0) }
-                    val titulos = listOf("Ejercicio 1", "Ejercicio 2", "Ejercicio 3", "Ejercicio 4")
+                    val titulos = listOf("Ejercicio 1", "Ejercicio 2", "Ejercicio 3", "Ejercicio 4", "Final")
 
                     Column(modifier = Modifier.padding(innerPadding)) {
                         Row(
@@ -52,6 +53,7 @@ class MainActivity : ComponentActivity() {
                             1 -> Ejercicio2Screen()
                             2 -> Ejercicio3Screen()
                             3 -> Ejercicio4Screen()
+                            4 -> Ejercicio5Screen()
                         }
                     }
                 }
