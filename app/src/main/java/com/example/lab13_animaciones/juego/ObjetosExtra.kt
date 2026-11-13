@@ -80,3 +80,19 @@ fun RocaView(modifier: Modifier = Modifier) {
         drawCircle(Color(0xFFFFAB40), r * 0.1f, Offset(center.x - r * 0.2f, center.y - r * 0.15f))
     }
 }
+
+// Rocoto: el ají arequipeño, coleccionable raro
+@Composable
+fun RocotoView(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        drawCircle(Color(0xFFFFD54F).copy(alpha = 0.25f), w * 0.55f, center)
+        // Cuerpo redondeado y rojo
+        drawOval(Color(0xFFD50000), Offset(w * 0.15f, h * 0.25f), Size(w * 0.7f, h * 0.7f))
+        drawOval(Color(0xFFFF5252), Offset(w * 0.28f, h * 0.38f), Size(w * 0.16f, h * 0.2f))
+        // Tallo y hojita
+        drawRoundRect(Color(0xFF2E7D32), Offset(w * 0.46f, h * 0.08f), Size(w * 0.08f, h * 0.2f), CornerRadius(w * 0.03f))
+        drawOval(Color(0xFF66BB6A), Offset(w * 0.52f, h * 0.06f), Size(w * 0.25f, h * 0.12f))
+    }
+}

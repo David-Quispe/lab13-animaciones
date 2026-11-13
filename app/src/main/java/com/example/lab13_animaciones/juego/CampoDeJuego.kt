@@ -138,6 +138,7 @@ private fun EntidadView(entidad: Entidad, g: Geometria, giro: State<Float>) {
             TipoEntidad.Escudo -> EscudoView(Modifier.fillMaxSize(0.85f))
             TipoEntidad.Iman -> ImanView(Modifier.fillMaxSize(0.85f))
             TipoEntidad.RocaVolcanica -> RocaView(Modifier.fillMaxSize(0.9f))
+            TipoEntidad.Rocoto -> RocotoView(Modifier.fillMaxSize(0.8f))
         }
     }
 }

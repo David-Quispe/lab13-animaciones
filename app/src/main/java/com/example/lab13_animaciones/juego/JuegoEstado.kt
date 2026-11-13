@@ -30,6 +30,7 @@ private const val INTERVALO_BASE = 1.1f
 private const val CLAVE_MEJOR = "mejor_puntaje"
 private const val TIEMPO_PRIMERA_ERUPCION = 20f
 
+private val COLORES_ROCOTO = listOf(Color(0xFFD50000), Color(0xFF66BB6A), Color(0xFFFFD54F), Color(0xFFFF6D00))
 private val COLORES_MONEDA = listOf(Color(0xFFFFC107), Color(0xFFFFE082), Color.White)
 private val COLORES_ESCUDO = listOf(Color(0xFF00E5FF), Color(0xFF81D4FA), Color.White)
 private val COLORES_IMAN = listOf(Color(0xFFAB47BC), Color(0xFFE1BEE7), Color.White)
@@ -37,7 +38,7 @@ private val COLORES_GOLPE = listOf(Color(0xFFFF5252), Color(0xFFFF9800), Color(0
 
 enum class Pantalla { Inicio, Jugando, Pausa, GameOver }
 
-enum class TipoEntidad { ObstaculoAlto, ObstaculoBajo, Moneda, Escudo, Iman, RocaVolcanica }
+enum class TipoEntidad { ObstaculoAlto, ObstaculoBajo, Moneda, Escudo, Iman, RocaVolcanica, Rocoto }
 
 // Cosas que pasan en el juego y que la pantalla convierte en sonido o vibración
 enum class EventoJuego { Moneda, Salto, Golpe, PowerUp, GameOver }
@@ -118,6 +119,8 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         private set
 
     // Erupción del Misti: carriles en peligro (un bit por carril) y mensaje en pantalla
+    var rocotos by mutableIntStateOf(0)
+        private set
     var avisoMascara by mutableIntStateOf(0)
         private set
     var erupcionActiva by mutableStateOf(false)
@@ -157,6 +160,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         puntaje = 0
         distancia = 0f
         puntosMonedas = 0
+        rocotos = 0
         racha = 0
         progresoEscudo = 0f
         progresoIman = 0f
@@ -327,6 +331,14 @@ class JuegoEstado(private val prefs: SharedPreferences) {
                     explosion(xDeCarril(e.carril), e.y, 12, COLORES_IMAN, 0.35f)
                     alEvento?.invoke(EventoJuego.PowerUp)
                 }
+                TipoEntidad.Rocoto -> if (mismoCarril) {
+                    e.consumida = true
+                    puntosMonedas += 100
+                    rocotos++
+                    explosion(xDeCarril(e.carril), e.y, 30, COLORES_ROCOTO, 0.6f)
+                    anunciar("🌶️ ¡Rocoto picante! +100", 2f)
+                    alEvento?.invoke(EventoJuego.PowerUp)
+                }
                 TipoEntidad.ObstaculoAlto, TipoEntidad.RocaVolcanica -> if (mismoCarril) golpear(e)
                 // El obstáculo bajo se puede saltar
                 TipoEntidad.ObstaculoBajo -> if (mismoCarril && !saltando) golpear(e)
@@ -455,9 +467,10 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         when {
             azar < 0.30f -> agregar(TipoEntidad.ObstaculoAlto, carrilNuevo, -0.1f)
             azar < 0.55f -> agregar(TipoEntidad.ObstaculoBajo, carrilNuevo, -0.1f)
-            azar < 0.92f -> for (i in 0 until 3) {
+            azar < 0.90f -> for (i in 0 until 3) {
                 agregar(TipoEntidad.Moneda, carrilNuevo, -0.1f - i * 0.09f)
             }
+            azar < 0.93f -> agregar(TipoEntidad.Rocoto, carrilNuevo, -0.1f)
             else -> agregar(
                 if (Random.nextBoolean()) TipoEntidad.Escudo else TipoEntidad.Iman,
                 carrilNuevo,
