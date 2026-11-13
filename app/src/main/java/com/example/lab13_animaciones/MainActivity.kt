@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
             Lab13animacionesTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     var seleccionado by remember { mutableIntStateOf(0) }
-                    val titulos = listOf("Ejercicio 1", "Ejercicio 2", "Ejercicio 3")
+                    val titulos = listOf("Ejercicio 1", "Ejercicio 2", "Ejercicio 3", "Ejercicio 4")
 
                     Column(modifier = Modifier.padding(innerPadding)) {
                         Row(
@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
                             0 -> Ejercicio1Screen()
                             1 -> Ejercicio2Screen()
                             2 -> Ejercicio3Screen()
+                            3 -> Ejercicio4Screen()
                         }
                     }
                 }
