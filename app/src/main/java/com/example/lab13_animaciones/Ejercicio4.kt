@@ -1,6 +1,10 @@
 package com.example.lab13_animaciones
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,7 +59,15 @@ fun Ejercicio4Screen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        AnimatedContent(targetState = estado, label = "estadoPantalla") { actual ->
+        AnimatedContent(
+            targetState = estado,
+            transitionSpec = {
+                // Entra despacio y sale rápido, para que el cambio no se sienta brusco
+                fadeIn(animationSpec = tween(durationMillis = 700, delayMillis = 150)) togetherWith
+                    fadeOut(animationSpec = tween(durationMillis = 300))
+            },
+            label = "estadoPantalla"
+        ) { actual ->
             when (actual) {
                 EstadoPantalla.Cargando -> TarjetaEstado(Color(0xFF607D8B)) {
                     CircularProgressIndicator(color = Color.White)
