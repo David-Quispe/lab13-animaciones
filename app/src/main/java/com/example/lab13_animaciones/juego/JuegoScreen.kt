@@ -1,6 +1,8 @@
 package com.example.lab13_animaciones.juego
 
 import android.content.Context
+import android.media.AudioManager
+import android.media.ToneGenerator
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
@@ -30,7 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,6 +49,34 @@ fun Ejercicio5Screen(modifier: Modifier = Modifier) {
     val contexto = LocalContext.current
     val juego = remember {
         JuegoEstado(contexto.getSharedPreferences("lab13_juego", Context.MODE_PRIVATE))
+    }
+
+    // Sonidos con ToneGenerator (no necesita archivos de audio) y vibración al chocar
+    val haptico = LocalHapticFeedback.current
+    DisposableEffect(juego) {
+        val tonos = try {
+            ToneGenerator(AudioManager.STREAM_MUSIC, 55)
+        } catch (e: RuntimeException) {
+            null
+        }
+        juego.alEvento = { evento ->
+            if (juego.sonidoActivo) {
+                when (evento) {
+                    EventoJuego.Moneda -> tonos?.startTone(ToneGenerator.TONE_PROP_BEEP, 60)
+                    EventoJuego.Salto -> tonos?.startTone(ToneGenerator.TONE_DTMF_5, 70)
+                    EventoJuego.PowerUp -> tonos?.startTone(ToneGenerator.TONE_PROP_ACK, 150)
+                    EventoJuego.Golpe -> tonos?.startTone(ToneGenerator.TONE_PROP_NACK, 180)
+                    EventoJuego.GameOver -> tonos?.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 400)
+                }
+            }
+            if (evento == EventoJuego.Golpe) {
+                haptico.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        }
+        onDispose {
+            juego.alEvento = null
+            tonos?.release()
+        }
     }
 
     // Bucle del juego: mientras la pantalla sea "Jugando" se actualiza en cada frame.
@@ -186,6 +219,9 @@ private fun PanelInicio(juego: JuegoEstado) {
         Button(onClick = { juego.iniciar() }) {
             Text("Jugar")
         }
+        Button(onClick = { juego.alternarSonido() }) {
+            Text(if (juego.sonidoActivo) "Sonido: sí" else "Sonido: no")
+        }
     }
 }
 
@@ -195,6 +231,9 @@ private fun PanelPausa(juego: JuegoEstado) {
         Text("Pausa", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Button(onClick = { juego.reanudar() }) {
             Text("Reanudar")
+        }
+        Button(onClick = { juego.alternarSonido() }) {
+            Text(if (juego.sonidoActivo) "Sonido: sí" else "Sonido: no")
         }
         Button(onClick = { juego.irAlMenu() }) {
             Text("Menú")

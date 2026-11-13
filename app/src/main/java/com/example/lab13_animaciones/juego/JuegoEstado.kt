@@ -38,6 +38,9 @@ enum class Pantalla { Inicio, Jugando, Pausa, GameOver }
 
 enum class TipoEntidad { ObstaculoAlto, ObstaculoBajo, Moneda, Escudo, Iman }
 
+// Cosas que pasan en el juego y que la pantalla convierte en sonido o vibración
+enum class EventoJuego { Moneda, Salto, Golpe, PowerUp, GameOver }
+
 // Todo lo que baja por la carretera. La posición y va de 0 (arriba) a 1 (abajo).
 class Entidad(val id: Int, val tipo: TipoEntidad, val carril: Int, yInicial: Float) {
     var y by mutableFloatStateOf(yInicial)
@@ -107,6 +110,10 @@ class JuegoEstado(private val prefs: SharedPreferences) {
     var progresoIman by mutableFloatStateOf(0f)
         private set
 
+    var sonidoActivo by mutableStateOf(true)
+        private set
+    var alEvento: ((EventoJuego) -> Unit)? = null
+
     val entidades = mutableStateListOf<Entidad>()
     val particulas = mutableStateListOf<Particula>()
 
@@ -147,6 +154,10 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         pantalla = Pantalla.Jugando
     }
 
+    fun alternarSonido() {
+        sonidoActivo = !sonidoActivo
+    }
+
     fun pausar() {
         if (pantalla == Pantalla.Jugando) pantalla = Pantalla.Pausa
     }
@@ -178,6 +189,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         if (pantalla == Pantalla.Jugando && !saltando) {
             saltando = true
             tiempoSalto = DURACION_SALTO
+            alEvento?.invoke(EventoJuego.Salto)
         }
     }
 
@@ -260,6 +272,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
                     racha++
                     monedas++
                     explosion(xDeCarril(e.carril), e.y, 8, COLORES_MONEDA, 0.3f)
+                    alEvento?.invoke(EventoJuego.Moneda)
                 }
                 TipoEntidad.Escudo -> if (mismoCarril) {
                     e.consumida = true
@@ -267,6 +280,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
                     tiempoEscudo = DURACION_ESCUDO
                     progresoEscudo = 1f
                     explosion(xDeCarril(e.carril), e.y, 12, COLORES_ESCUDO, 0.35f)
+                    alEvento?.invoke(EventoJuego.PowerUp)
                 }
                 TipoEntidad.Iman -> if (mismoCarril) {
                     e.consumida = true
@@ -274,6 +288,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
                     tiempoIman = DURACION_IMAN
                     progresoIman = 1f
                     explosion(xDeCarril(e.carril), e.y, 12, COLORES_IMAN, 0.35f)
+                    alEvento?.invoke(EventoJuego.PowerUp)
                 }
                 TipoEntidad.ObstaculoAlto -> if (mismoCarril) golpear(e)
                 // El obstáculo bajo se puede saltar
@@ -325,6 +340,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
         golpes++
         racha = 0
         explosion(xDeCarril(carril), POS_JUGADOR, 18, COLORES_GOLPE, 0.5f)
+        alEvento?.invoke(EventoJuego.Golpe)
         if (escudoActivo) {
             // El escudo absorbe un golpe
             escudoActivo = false
@@ -344,6 +360,7 @@ class JuegoEstado(private val prefs: SharedPreferences) {
             prefs.edit().putInt(CLAVE_MEJOR, puntaje).apply()
         }
         pantalla = Pantalla.GameOver
+        alEvento?.invoke(EventoJuego.GameOver)
     }
 
     private fun generar() {
