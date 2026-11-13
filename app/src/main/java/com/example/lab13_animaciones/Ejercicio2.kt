@@ -1,6 +1,8 @@
 package com.example.lab13_animaciones
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +39,16 @@ fun Ejercicio2Screen(modifier: Modifier = Modifier) {
         label = "colorTween"
     )
 
+    // Mismo cambio de color, pero con spring para comparar la sensación
+    val colorSpring by animateColorAsState(
+        targetValue = if (esAzul) Color(0xFF2196F3) else Color(0xFF4CAF50),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "colorSpring"
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -57,6 +69,17 @@ fun Ejercicio2Screen(modifier: Modifier = Modifier) {
             contentAlignment = Alignment.Center
         ) {
             Text(text = "tween", color = Color.White)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Box(
+            modifier = Modifier
+                .size(160.dp)
+                .background(colorSpring, RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "spring", color = Color.White)
         }
     }
 }
